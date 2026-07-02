@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/documents/">
+    <File Path="arquitetura.md" />
+    <File Path="requisitos.md" />
+  </Folder>
+  <Project Path="ONG.Donation/ONG.Donation.WebAPI.csproj" />
+</Solution>

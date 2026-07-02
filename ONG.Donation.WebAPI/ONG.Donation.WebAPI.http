@@ -1,0 +1,6 @@
+@ONG.Donation.WebAPI_HostAddress = http://localhost:5139
+
+GET {{ONG.Donation.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

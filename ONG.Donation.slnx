@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="ONG.Donation.Application/ONG.Donation.Application.csproj" />
+  <Project Path="ONG.Donation.Domain/ONG.Donation.Domain.csproj" />
+  <Project Path="ONG.Donation.Infrastructure/ONG.Donation.Infrastructure.csproj" />
+  <Project Path="ONG.Donation.WebAPI/ONG.Donation.WebAPI.csproj" />
+  <Project Path="ONG.Donation.Worker/ONG.Donation.Worker.csproj" />
+</Solution>

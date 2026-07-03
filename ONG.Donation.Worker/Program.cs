@@ -1,7 +1,14 @@
+using Microsoft.Extensions.Configuration;
 using ONG.Donation.Infrastructure.DependencyInjection;
 using ONG.Donation.Worker.Consumers;
 using Serilog;
 using Serilog.Sinks.Grafana.Loki;
+
+var config = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .Build();
+
+var lokiUrl = config["Loki:Url"] ?? "http://localhost:3100";
 
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
@@ -9,7 +16,7 @@ Log.Logger = new LoggerConfiguration()
     .Enrich.WithThreadId()
     .Enrich.WithProperty("Application", "ONG.Donation.Worker")
     .WriteTo.Console()
-    .WriteTo.GrafanaLoki("http://localhost:3100",
+    .WriteTo.GrafanaLoki(lokiUrl,
         new[]
         {
             new LokiLabel { Key = "app", Value = "ong-donation-worker" },

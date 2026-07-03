@@ -20,7 +20,8 @@ public static class DonationEndpoints
             ClaimsPrincipal user) =>
         {
             var donorId = int.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var donation = await donationService.CreateAsync(donorId, request);
+            var userId = int.Parse(user.FindFirstValue("UserId") ?? user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var donation = await donationService.CreateAsync(donorId, userId, request);
             return Results.Created($"/donations/{donation.Id}", donation);
         })
         .RequireAuthorization("DonorOnly")

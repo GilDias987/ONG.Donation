@@ -25,6 +25,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthService, JwtService>();
         services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+        services.Configure<RabbitMQOptions>(configuration.GetSection("RabbitMQ"));
         services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
         return services;

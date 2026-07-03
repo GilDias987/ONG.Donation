@@ -7,6 +7,7 @@ using ONG.Donation.Application.Interfaces;
 using ONG.Donation.Infrastructure.DependencyInjection;
 using ONG.Donation.Infrastructure.Persistence.Context;
 using ONG.Donation.Infrastructure.Persistence.Seed;
+using ONG.Donation.WebAPI.Consumers;
 using ONG.Donation.WebAPI.Extensions;
 using ONG.Donation.WebAPI.Middlewares;
 using Serilog;
@@ -22,7 +23,7 @@ Log.Logger = new LoggerConfiguration()
     .Enrich.WithProperty("Application", "ONG.Donation.WebAPI")
     .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
     .WriteTo.Console()
-    .WriteTo.GrafanaLoki("http://localhost:3100",
+    .WriteTo.GrafanaLoki(builder.Configuration["Loki:Url"] ?? "http://localhost:3100",
         new[]
         {
             new LokiLabel { Key = "app", Value = "ong-donation-webapi" },
@@ -34,7 +35,8 @@ builder.Host.UseSerilog();
 
 builder.Services
     .AddApplication()
-    .AddInfrastructure(builder.Configuration);
+    .AddInfrastructure(builder.Configuration)
+    .AddHostedService<PaymentEventConsumer>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

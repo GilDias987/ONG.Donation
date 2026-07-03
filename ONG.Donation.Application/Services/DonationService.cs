@@ -37,7 +37,7 @@ public class DonationService : IDonationService
         _logger = logger;
     }
 
-    public async Task<DonationResponse> CreateAsync(int donorId, CreateDonationRequest request)
+    public async Task<DonationResponse> CreateAsync(int donorId, int userId, CreateDonationRequest request)
     {
         _logger.LogInformation("Creating donation for campaign {CampaignId} by donor {DonorId}, amount {Amount}",
             request.CampaignId, donorId, request.Amount);
@@ -74,6 +74,7 @@ public class DonationService : IDonationService
             donation.Id,
             campaign.Id,
             donorId,
+            userId,
             request.Amount,
             DateTime.UtcNow));
 

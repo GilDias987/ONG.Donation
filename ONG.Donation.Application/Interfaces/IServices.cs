@@ -14,7 +14,7 @@ public interface ICampaignService
 
 public interface IDonationService
 {
-    Task<DonationResponse> CreateAsync(int donorId, CreateDonationRequest request);
+    Task<DonationResponse> CreateAsync(int donorId, int userId, CreateDonationRequest request);
     Task<IEnumerable<DonationResponse>> GetByCampaignIdAsync(int campaignId);
 }
 

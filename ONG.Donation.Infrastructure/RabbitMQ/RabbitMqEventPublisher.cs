@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ONG.Donation.Application.Interfaces;
 using ONG.Donation.Domain.Interfaces;
 using RabbitMQ.Client;
@@ -12,25 +13,28 @@ public class RabbitMqEventPublisher : IEventPublisher, IDisposable
     private readonly IConnection _connection;
     private readonly IChannel _channel;
     private readonly ILogger<RabbitMqEventPublisher> _logger;
-    private const string ExchangeName = "donation.events";
+    private readonly string _exchangeName;
 
-    public RabbitMqEventPublisher(ILogger<RabbitMqEventPublisher> logger)
+    public RabbitMqEventPublisher(ILogger<RabbitMqEventPublisher> logger, IOptions<RabbitMQOptions> options)
     {
         _logger = logger;
+        var rabbitMqOptions = options.Value;
 
         var factory = new ConnectionFactory
         {
-            HostName = "localhost",
-            UserName = "owng",
-            Password = "owong"
+            HostName = rabbitMqOptions.HostName,
+            UserName = rabbitMqOptions.UserName,
+            Password = rabbitMqOptions.Password
         };
+
+        _exchangeName = rabbitMqOptions.ExchangeName;
 
         _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
 
-        _channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true).GetAwaiter().GetResult();
+        _channel.ExchangeDeclareAsync(_exchangeName, ExchangeType.Topic, durable: true).GetAwaiter().GetResult();
 
-        _logger.LogInformation("RabbitMQ connection established, exchange {ExchangeName} declared", ExchangeName);
+        _logger.LogInformation("RabbitMQ connection established, exchange {ExchangeName} declared", _exchangeName);
     }
 
     public async Task PublishAsync<T>(T domainEvent) where T : IDomainEvent
@@ -39,12 +43,12 @@ public class RabbitMqEventPublisher : IEventPublisher, IDisposable
         var body = JsonSerializer.SerializeToUtf8Bytes(domainEvent);
 
         await _channel.BasicPublishAsync(
-            exchange: ExchangeName,
+            exchange: _exchangeName,
             routingKey: routingKey,
             body: body);
 
         _logger.LogInformation("Event {EventType} published to {Exchange}/{RoutingKey}",
-            routingKey, ExchangeName, routingKey);
+            routingKey, _exchangeName, routingKey);
     }
 
     public void Dispose()

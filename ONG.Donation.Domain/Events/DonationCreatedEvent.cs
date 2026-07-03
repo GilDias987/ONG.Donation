@@ -6,5 +6,6 @@ public record DonationCreatedEvent(
     int DonationId,
     int CampaignId,
     int DonorId,
+    int UserId,
     decimal Amount,
     DateTime OccurredAt) : IDomainEvent;

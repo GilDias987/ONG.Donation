@@ -1,8 +1,10 @@
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using ONG.Donation.Application.Interfaces;
 using ONG.Donation.Domain.Enums;
 using ONG.Donation.Domain.Events;
+using ONG.Donation.Infrastructure.RabbitMQ;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -12,32 +14,32 @@ public class DonationConsumer : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DonationConsumer> _logger;
+    private readonly RabbitMQOptions _rabbitMqOptions;
     private IConnection _connection;
     private IChannel _channel;
-    private const string ExchangeName = "donation.events";
-    private const string QueueName = "donation.payment";
 
-    public DonationConsumer(IServiceProvider serviceProvider, ILogger<DonationConsumer> logger)
+    public DonationConsumer(IServiceProvider serviceProvider, ILogger<DonationConsumer> logger, IOptions<RabbitMQOptions> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _rabbitMqOptions = options.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var factory = new ConnectionFactory
         {
-            HostName = "localhost",
-            UserName = "owng",
-            Password = "owong"
+            HostName = _rabbitMqOptions.HostName,
+            UserName = _rabbitMqOptions.UserName,
+            Password = _rabbitMqOptions.Password
         };
 
         _connection = await factory.CreateConnectionAsync(stoppingToken);
         _channel = await _connection.CreateChannelAsync(null, stoppingToken);
 
-        await _channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: stoppingToken);
-        await _channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
-        await _channel.QueueBindAsync(QueueName, ExchangeName, "DonationCreatedEvent", cancellationToken: stoppingToken);
+        await _channel.ExchangeDeclareAsync(_rabbitMqOptions.ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: stoppingToken);
+        await _channel.QueueDeclareAsync(_rabbitMqOptions.QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
+        await _channel.QueueBindAsync(_rabbitMqOptions.QueueName, _rabbitMqOptions.ExchangeName, "DonationCreatedEvent", cancellationToken: stoppingToken);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.ReceivedAsync += async (model, ea) =>
@@ -96,7 +98,7 @@ public class DonationConsumer : BackgroundService
             }
         };
 
-        await _channel.BasicConsumeAsync(QueueName, autoAck: false, consumer: consumer, cancellationToken: stoppingToken);
+        await _channel.BasicConsumeAsync(_rabbitMqOptions.QueueName, autoAck: false, consumer: consumer, cancellationToken: stoppingToken);
         _logger.LogInformation("DonationConsumer started, waiting for messages...");
 
         await Task.Delay(Timeout.Infinite, stoppingToken);

@@ -13,7 +13,7 @@ metadata:
 data:
   # Application settings
   ASPNETCORE_ENVIRONMENT: "Production"
-  ASPNETCORE_URLS: "http://+:80"
+  ASPNETCORE_URLS: "http://+:8080"
   LOG_LEVEL: "Information"
   
   # API Configuration

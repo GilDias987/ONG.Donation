@@ -188,24 +188,3 @@ spec:
             name: ong-donation-webapi
             port:
               number: 80
-
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: ong-donation-tls
-  namespace: ong-donation
-  labels:
-    app: ong-donation-webapi
-spec:
-  secretName: ong-donation-tls
-  duration: 8760h # 1 year
-  renewBefore: 720h # 30 days
-  commonName: donation.ong.com
-  dnsNames:
-  - donation.ong.com
-  - api.donation.ong.com
-  - www.donation.ong.com
-  issuerRef:
-    name: letsencrypt-prod
-    kind: ClusterIssuer

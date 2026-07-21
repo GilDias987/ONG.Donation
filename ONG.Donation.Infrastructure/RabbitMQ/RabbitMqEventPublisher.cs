@@ -22,9 +22,7 @@ public class RabbitMqEventPublisher : IEventPublisher, IDisposable
 
         var factory = new ConnectionFactory
         {
-            HostName = rabbitMqOptions.HostName,
-            UserName = rabbitMqOptions.UserName,
-            Password = rabbitMqOptions.Password
+            Uri = new Uri(rabbitMqOptions.ConnectionString)
         };
 
         _exchangeName = rabbitMqOptions.ExchangeName;

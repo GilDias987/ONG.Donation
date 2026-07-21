@@ -70,10 +70,15 @@ spec:
             name: ong-donation-config
         - secretRef:
             name: ong-donation-secrets
-            optional: true
+            optional: false
         
         # Additional environment variables
         env:
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: ong-donation-secrets
+              key: ConnectionStrings__DefaultConnection
         - name: POD_NAME
           valueFrom:
             fieldRef:

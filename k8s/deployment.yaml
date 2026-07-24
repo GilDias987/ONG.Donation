@@ -1,0 +1,205 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ong-donation-webapi
+  namespace: ong-donation
+  labels:
+    app: ong-donation-webapi
+    app.kubernetes.io/name: ong-donation-webapi
+    app.kubernetes.io/component: api
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/part-of: ong-donation-platform
+    app.kubernetes.io/managed-by: terraform
+  annotations:
+    description: "ONG Donation WebAPI - ASP.NET Core REST API"
+    deployment.kubernetes.io/revision: "1"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: ong-donation-webapi
+      component: api
+  template:
+    metadata:
+      labels:
+        app: ong-donation-webapi
+        component: api
+        azure.workload.identity/use: "true"
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: ong-donation-webapi
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: ong-donation-webapi
+        image: __IMAGE__
+        imagePullPolicy: Always
+        
+        # Container security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        
+        # Port configuration
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: ong-donation-config
+        - secretRef:
+            name: ong-donation-secrets
+            optional: false
+        
+        # Additional environment variables
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: ong-donation-secrets
+              key: ConnectionStrings__DefaultConnection
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        
+        # Resource limits and requests
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        # Liveness probe
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        
+        # Startup probe
+        startupProbe:
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 20
+        
+        # Volume mounts
+        volumeMounts:
+        - name: keyvault-secrets
+          mountPath: /mnt/secrets-store
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+        - name: aspnet-temp
+          mountPath: /tmp/aspnet
+        
+        # Lifecycle hooks
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - sleep 15 && kill -TERM 1
+      
+      # Pod disruption budget
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ong-donation-webapi
+              topologyKey: kubernetes.io/hostname
+      
+      # Volumes
+      volumes:
+      - name: keyvault-secrets
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: ong-donation-keyvault-secrets
+      - name: temp
+        emptyDir: {}
+      - name: aspnet-temp
+        emptyDir: {}
+      
+      # DNS policy
+      dnsPolicy: ClusterFirst
+      
+      # Grace period
+      terminationGracePeriodSeconds: 30
+      
+      # Image pull secrets (if using private ACR)
+      # imagePullSecrets:
+      # - name: acr-credentials
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ong-donation-webapi-pdb
+  namespace: ong-donation
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ong-donation-webapi
+      component: api

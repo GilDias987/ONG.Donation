@@ -33,6 +33,14 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+var startupConnectionStrings = builder.Configuration.GetSection("ConnectionStrings")
+    .GetChildren()
+    .Where(child => !string.IsNullOrWhiteSpace(child.Value))
+    .ToDictionary(child => child.Key, child => child.Value);
+
+Log.Information("Startup connection strings: {@ConnectionStrings}", startupConnectionStrings);
+Log.Information("JWT configuration present: {HasJwtKey}", !string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"] ?? builder.Configuration["Jwt__Key"]));
+
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
@@ -47,10 +55,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? builder.Configuration["Jwt__Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration["Jwt__Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
+                Encoding.UTF8.GetBytes((builder.Configuration["Jwt:Key"] ?? builder.Configuration["Jwt__Key"])!)),
         };
 
 

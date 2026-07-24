@@ -11,17 +11,17 @@ services:
       - sqlserver_data:/var/opt/mssql
     restart: unless-stopped
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
+  azure-service-bus:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    container_name: servicebus-emulator
     environment:
-      RABBITMQ_DEFAULT_USER: owng
-      RABBITMQ_DEFAULT_PASS: owong
+      SQL_SERVER: sqlserver
+      MSSQL_SA_PASSWORD: "Carlos@987"
+      ACCEPT_EULA: "Y"
     ports:
       - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+    depends_on:
+      - sqlserver
     restart: unless-stopped
 
   loki:
@@ -50,5 +50,4 @@ services:
 
 volumes:
   sqlserver_data:
-  rabbitmq_data:
   grafana_data:

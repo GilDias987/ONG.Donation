@@ -37,6 +37,13 @@ public class Campaign : BaseEntity
         SetUpdatedAt();
     }
 
+    public void UpdateFinancialGoal(decimal financialGoal)
+    {
+        FinancialGoal = financialGoal;
+        Validate();
+        SetUpdatedAt();
+    }
+
     public void Activate()
     {
         if (Status != CampaignStatus.Cancelada)

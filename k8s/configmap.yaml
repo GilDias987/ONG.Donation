@@ -1,0 +1,81 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ong-donation-config
+  namespace: ong-donation
+  labels:
+    app: ong-donation-webapi
+    app.kubernetes.io/name: ong-donation-webapi
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/part-of: ong-donation-platform
+    app.kubernetes.io/managed-by: terraform
+data:
+  # Application settings
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://+:8080"
+  LOG_LEVEL: "Information"
+  
+  # API Configuration
+  API_VERSION: "v1"
+  ENABLE_SWAGGER: "false"
+  ENABLE_HEALTH_CHECKS: "true"
+  HEALTH_CHECK_PATH: "/health"
+  
+  # Database Configuration
+  DATABASE_POOL_SIZE: "20"
+  DATABASE_TIMEOUT: "30"
+  
+  # JWT Configuration
+  JWT_ISSUER: "ONG.Donation"
+  JWT_AUDIENCE: "ONG.Donation.Client"
+  JWT_EXPIRY_IN_HOURS: "8"
+  
+  # RabbitMQ Configuration
+  RABBITMQ_EXCHANGE_NAME: "donation.events"
+  RABBITMQ_QUEUE_NAME: "donation.payments"
+  RABBITMQ_HOST: "ong-donation-rabbitmq.ong-donation.svc.cluster.local"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_VIRTUAL_HOST: "/"
+  RABBITMQ_CONNECTION_TIMEOUT: "30"
+  RABBITMQ_PREFETCH_COUNT: "10"
+  
+  # Loki Configuration (Logging)
+  LOKI_ENABLED: "true"
+  LOKI_URL: "http://loki.monitoring.svc.cluster.local:3100"
+  LOKI_JOB_NAME: "ong-donation-webapi"
+  
+  # Application Insights
+  APPLICATION_INSIGHTS_ENABLED: "true"
+  
+  # Feature Flags
+  FEATURE_RATE_LIMITING: "true"
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "100"
+  FEATURE_CACHING: "true"
+  CACHE_DEFAULT_TTL_SECONDS: "300"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ong-donation-logging-config
+  namespace: ong-donation
+  labels:
+    app: ong-donation-webapi
+    component: logging
+data:
+  appsettings.json: |
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning",
+          "Microsoft.EntityFrameworkCore": "Warning"
+        },
+        "Console": {
+          "IncludeScopes": true,
+          "TimestampFormat": "yyyy-MM-dd HH:mm:ss.fff zzz"
+        }
+      },
+      "AllowedHosts": "*"
+    }

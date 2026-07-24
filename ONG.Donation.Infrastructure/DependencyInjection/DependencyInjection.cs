@@ -5,7 +5,7 @@ using ONG.Donation.Application.Interfaces;
 using ONG.Donation.Infrastructure.Authentication;
 using ONG.Donation.Infrastructure.Persistence.Context;
 using ONG.Donation.Infrastructure.Persistence.Repositories;
-using ONG.Donation.Infrastructure.RabbitMQ;
+using ONG.Donation.Infrastructure.ServiceBus;
 using ONG.Donation.Infrastructure.Services;
 
 namespace ONG.Donation.Infrastructure.DependencyInjection;
@@ -25,8 +25,8 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthService, JwtService>();
         services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
-        services.Configure<RabbitMQOptions>(configuration.GetSection("RabbitMQ"));
-        services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
+        services.Configure<ServiceBusOptions>(configuration.GetSection("ServiceBus"));
+        services.AddSingleton<IEventPublisher, ServiceBusEventPublisher>();
 
         return services;
     }

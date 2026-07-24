@@ -36,7 +36,7 @@ builder.Host.UseSerilog();
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
-    .AddHostedService<PaymentEventConsumer>();
+    .AddHostedService<ServiceBusPaymentEventConsumer>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

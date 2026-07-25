@@ -33,7 +33,7 @@ data:
   
   # RabbitMQ Configuration
   RABBITMQ_EXCHANGE_NAME: "donation.events"
-  RABBITMQ_QUEUE_NAME: "donation.payments"
+  RABBITMQ_QUEUE_NAME: "donation.payment"
   RABBITMQ_HOST: "ong-donation-rabbitmq.ong-donation.svc.cluster.local"
   RABBITMQ_PORT: "5672"
   RABBITMQ_VIRTUAL_HOST: "/"

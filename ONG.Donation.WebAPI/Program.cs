@@ -92,8 +92,6 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-app.MapHealthChecks("/health/live");
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -103,6 +101,8 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready");
 app.UseAuthorization();
 app.MapEndpoints();
 

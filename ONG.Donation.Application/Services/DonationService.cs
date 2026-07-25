@@ -1,4 +1,3 @@
-using AutoMapper;
 using Microsoft.Extensions.Logging;
 using ONG.Donation.Application.DTOs;
 using ONG.Donation.Application.Interfaces;
@@ -15,7 +14,6 @@ public class DonationService : IDonationService
     private readonly ICampaignRepository _campaignRepository;
     private readonly IDonorRepository _donorRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
     private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<DonationService> _logger;
 
@@ -24,7 +22,6 @@ public class DonationService : IDonationService
         ICampaignRepository campaignRepository,
         IDonorRepository donorRepository,
         IUnitOfWork unitOfWork,
-        IMapper mapper,
         IEventPublisher eventPublisher,
         ILogger<DonationService> logger)
     {
@@ -32,10 +29,12 @@ public class DonationService : IDonationService
         _campaignRepository = campaignRepository;
         _donorRepository = donorRepository;
         _unitOfWork = unitOfWork;
-        _mapper = mapper;
         _eventPublisher = eventPublisher;
         _logger = logger;
     }
+
+    private static DonationResponse ToResponse(DomainDonation d) => new(
+        d.Id, d.CampaignId, d.Amount, d.Status.ToString());
 
     public async Task<DonationResponse> CreateAsync(int donorId, int userId, CreateDonationRequest request)
     {
@@ -79,7 +78,7 @@ public class DonationService : IDonationService
             DateTime.UtcNow));
 
         _logger.LogInformation("Donation {DonationId} created and event published successfully", donation.Id);
-        return _mapper.Map<DonationResponse>(donation);
+        return ToResponse(donation);
     }
 
     public async Task<IEnumerable<DonationResponse>> GetByCampaignIdAsync(int campaignId)
@@ -87,6 +86,6 @@ public class DonationService : IDonationService
         _logger.LogInformation("Fetching donations for campaign {CampaignId}", campaignId);
         var donations = await _donationRepository.GetByCampaignIdAsync(campaignId);
         _logger.LogInformation("Retrieved {Count} donations for campaign {CampaignId}", donations.Count(), campaignId);
-        return _mapper.Map<IEnumerable<DonationResponse>>(donations);
+        return donations.Select(ToResponse);
     }
 }

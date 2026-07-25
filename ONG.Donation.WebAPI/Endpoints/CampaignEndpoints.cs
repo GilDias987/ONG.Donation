@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ONG.Donation.Application.DTOs;
 using ONG.Donation.Application.Interfaces;
@@ -53,6 +52,18 @@ public static class CampaignEndpoints
         .RequireAuthorization("AdminOnly")
         .WithName("UpdateCampaign")
         .WithSummary("Update an existing campaign");
+
+        group.MapPatch("/{id:int}/updateAmount", async (
+            int id,
+            [FromBody] UpdateCampaignValueRequest request,
+            ICampaignService campaignService) =>
+        {
+            var campaign = await campaignService.UpdateValueAsync(id, request);
+            return Results.Ok(campaign);
+        })
+        .RequireAuthorization("AdminOnly")
+        .WithName("UpdateCampaignValue")
+        .WithSummary("Update campaign financial goal (Admin only)");
 
         group.MapPatch("/{id:int}/status", async (
             int id,

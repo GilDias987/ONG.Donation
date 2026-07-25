@@ -1,67 +1,57 @@
-using System.Text;
 using System.Text.Json;
+using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Options;
 using ONG.Donation.Application.Interfaces;
 using ONG.Donation.Domain.Enums;
 using ONG.Donation.Domain.Events;
 using ONG.Donation.Infrastructure.Persistence.Context;
-using ONG.Donation.Infrastructure.RabbitMQ;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
+using ONG.Donation.Infrastructure.ServiceBus;
 
 namespace ONG.Donation.WebAPI.Consumers;
 
-public class PaymentEventConsumer : BackgroundService
+public class ServiceBusPaymentEventConsumer : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<PaymentEventConsumer> _logger;
-    private readonly RabbitMQOptions _rabbitMqOptions;
-    private IConnection _connection = null!;
-    private IChannel _channel = null!;
+    private readonly ILogger<ServiceBusPaymentEventConsumer> _logger;
+    private readonly ServiceBusOptions _serviceBusOptions;
+    private ServiceBusProcessor _processor = null!;
+    private ServiceBusClient _client = null!;
 
-    public PaymentEventConsumer(IServiceProvider serviceProvider, ILogger<PaymentEventConsumer> logger, IOptions<RabbitMQOptions> options)
+    public ServiceBusPaymentEventConsumer(IServiceProvider serviceProvider, ILogger<ServiceBusPaymentEventConsumer> logger, IOptions<ServiceBusOptions> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _rabbitMqOptions = options.Value;
+        _serviceBusOptions = options.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var factory = new ConnectionFactory
+        _client = new ServiceBusClient(_serviceBusOptions.ConnectionString);
+
+        _processor = _client.CreateProcessor(_serviceBusOptions.ResultQueueName, new ServiceBusProcessorOptions
         {
-            Uri = new Uri(_rabbitMqOptions.ConnectionString)
-        };
+            AutoCompleteMessages = false
+        });
 
-        _connection = await factory.CreateConnectionAsync(stoppingToken);
-        _channel = await _connection.CreateChannelAsync(null, stoppingToken);
-
-        await _channel.ExchangeDeclareAsync(_rabbitMqOptions.ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: stoppingToken);
-
-        var queueName = "donation.payment.result";
-        await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
-        await _channel.QueueBindAsync(queueName, _rabbitMqOptions.ExchangeName, "DonationPaymentProcessedEvent", cancellationToken: stoppingToken);
-        await _channel.QueueBindAsync(queueName, _rabbitMqOptions.ExchangeName, "DonationPaymentFailedEvent", cancellationToken: stoppingToken);
-
-        var consumer = new AsyncEventingBasicConsumer(_channel);
-        consumer.ReceivedAsync += async (model, ea) =>
+        _processor.ProcessMessageAsync += async args =>
         {
             try
             {
-                var body = ea.Body.ToArray();
-                var routingKey = ea.RoutingKey;
-                _logger.LogInformation("Payment event received: {RoutingKey}", routingKey);
+                var body = args.Message.Body.ToString();
+                var subject = args.Message.Subject;
+                _logger.LogInformation("Payment event received: {Subject}", subject);
 
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var donationRepository = scope.ServiceProvider.GetRequiredService<IDonationRepository>();
 
-                if (routingKey == "DonationPaymentProcessedEvent")
+                if (subject == "DonationPaymentProcessedEvent")
                 {
                     var paymentEvent = JsonSerializer.Deserialize<DonationPaymentProcessedEvent>(body);
                     if (paymentEvent is null)
                     {
                         _logger.LogWarning("Failed to deserialize DonationPaymentProcessedEvent.");
+                        await args.CompleteMessageAsync(args.Message, stoppingToken);
                         return;
                     }
 
@@ -69,6 +59,7 @@ public class PaymentEventConsumer : BackgroundService
                     if (donation is null)
                     {
                         _logger.LogWarning("Donation {Id} not found.", paymentEvent.DonationId);
+                        await args.CompleteMessageAsync(args.Message, stoppingToken);
                         return;
                     }
 
@@ -77,12 +68,13 @@ public class PaymentEventConsumer : BackgroundService
                     await dbContext.SaveChangesAsync(stoppingToken);
                     _logger.LogInformation("Donation {Id} marked as processed.", donation.Id);
                 }
-                else if (routingKey == "DonationPaymentFailedEvent")
+                else if (subject == "DonationPaymentFailedEvent")
                 {
                     var paymentEvent = JsonSerializer.Deserialize<DonationPaymentFailedEvent>(body);
                     if (paymentEvent is null)
                     {
                         _logger.LogWarning("Failed to deserialize DonationPaymentFailedEvent.");
+                        await args.CompleteMessageAsync(args.Message, stoppingToken);
                         return;
                     }
 
@@ -90,6 +82,7 @@ public class PaymentEventConsumer : BackgroundService
                     if (donation is null)
                     {
                         _logger.LogWarning("Donation {Id} not found.", paymentEvent.DonationId);
+                        await args.CompleteMessageAsync(args.Message, stoppingToken);
                         return;
                     }
 
@@ -99,26 +92,32 @@ public class PaymentEventConsumer : BackgroundService
                     _logger.LogInformation("Donation {Id} marked as failed.", donation.Id);
                 }
 
-                await _channel.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken: stoppingToken);
+                await args.CompleteMessageAsync(args.Message, stoppingToken);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing payment event.");
-                await _channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, cancellationToken: stoppingToken);
+                await args.AbandonMessageAsync(args.Message, cancellationToken: stoppingToken);
             }
         };
 
-        await _channel.BasicConsumeAsync(queueName, autoAck: false, consumer: consumer, cancellationToken: stoppingToken);
-        _logger.LogInformation("PaymentEventConsumer started, waiting for payment result events...");
+        _processor.ProcessErrorAsync += args =>
+        {
+            _logger.LogError(args.Exception, "ServiceBus processor error");
+            return Task.CompletedTask;
+        };
+
+        await _processor.StartProcessingAsync(stoppingToken);
+        _logger.LogInformation("ServiceBusPaymentEventConsumer started, waiting for payment result events...");
 
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("PaymentEventConsumer stopping...");
-        if (_channel is not null) await _channel.CloseAsync(cancellationToken);
-        if (_connection is not null) await _connection.CloseAsync(cancellationToken);
+        _logger.LogInformation("ServiceBusPaymentEventConsumer stopping...");
+        if (_processor is not null) await _processor.CloseAsync(cancellationToken);
+        if (_client is not null) await _client.DisposeAsync();
         await base.StopAsync(cancellationToken);
     }
 }

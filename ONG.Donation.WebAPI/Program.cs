@@ -44,7 +44,7 @@ Log.Information("JWT configuration present: {HasJwtKey}", !string.IsNullOrWhiteS
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
-    .AddHostedService<PaymentEventConsumer>();
+    .AddHostedService<ServiceBusPaymentEventConsumer>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

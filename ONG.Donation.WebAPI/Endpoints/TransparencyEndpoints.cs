@@ -17,7 +17,7 @@ public static class TransparencyEndpoints
         })
         .AllowAnonymous()
         .WithName("GetActiveCampaigns")
-        .WithSummary("Get active campaigns (public)");
+        .WithSummary("Get active campaigns (public) 26/07/2026");
 
         return app;
     }

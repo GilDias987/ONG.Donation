@@ -258,11 +258,11 @@ O provisionamento dos recursos Azure (AKS, ACR, Key Vault, SQL Server, Service B
 
 ## Equipe — Grupo 55
 
-| RM       | Membro                                         |
-|----------|------------------------------------------------|
-| RM367747 | — Alexandre Araújo da Silva  / AlexandreAraujo |
-| RM367560 | — Josegil Dias Frota Figueira / gildiasfrota   |
-| RM367985 | — Miguel de Oliveira Gonçalves / miguel084     |
+| RM       | Membro                                       |
+|----------|----------------------------------------------|
+| RM367747 | Alexandre Araújo da Silva  / AlexandreAraujo |
+| RM367560 | Josegil Dias Frota Figueira / gildiasfrota   |
+| RM367985 | Miguel de Oliveira Gonçalves / miguel084     |
 
 ---
 

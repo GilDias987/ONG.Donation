@@ -80,7 +80,7 @@ Doador → POST /donations
                                    ▼
                     ProcessPaymentAsync (simulado)
                                    │
-                    ┌──────────────┴──────────────┐
+                    ┌──────────────┴───────────────┐
                     ▼                              ▼
           Sucesso → Processada            Falha → Falhou
                     │                              │

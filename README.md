@@ -1,4 +1,4 @@
-# 🫂 Conexão Solidária - ONG.Donation
+# Conexão Solidária - ONG.Donation
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)

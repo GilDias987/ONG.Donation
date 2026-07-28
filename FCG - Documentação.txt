@@ -1,0 +1,208 @@
+HACKATON
+
+FASE 5:
+
+	A ONG Esperança Solidária atua há mais de 10 anos acolhendo crianças em
+situação de vulnerabilidade. Atualmente, a gestão de doadores e campanhas de
+arrecadação é feita de forma manual, limitando a capacidade da ONG de expandir
+sua ajuda. Para resolver esse problema, a diretoria decidiu criar a plataforma digital
+"Conexão Solidária", focada em escalabilidade, observabilidade e automação.
+
+	A missão dos alunos e alunas do curso é arquitetar e desenvolver o MVP dessa
+plataforma, entregando uma solução robusta e pronta para crescer.  
+
+Requisitos Funcionais Detalhados (O que deve ser feito)
+
+    1. Migração para Microsserviços:
+	• O sistema deve possuir autenticação baseada em Tokens JWT (JSON Web Tokens).
+	• Devem existir dois perfis (Roles) distintos: GestorONG e Doador.
+	• Endpoints de gestão devem ser bloqueados apenas para usuários com
+      a role GestorONG.
+
+    2. Gestão de Campanhas (Acesso: GestorONG)
+	• Criar/Editar: o sistema deve permitir o cadastro de campanhas
+      contendo obrigatoriamente: Título (string), Descricao (string), DataInicio
+      (datetime), DataFim (datetime), MetaFinanceira (decimal), e Status
+      (Ativa, Concluida, Cancelada).
+	• Regra de Negócio: uma campanha não pode ser criada com a data de
+      término no passado e a meta financeira deve ser maior que zero.
+	
+	3. Cadastro de Doador (Acesso: Público) 
+	• O sistema deve permitir o cadastro de novos usuários com os campos:
+      Nome Completo, Email (deve ser único no banco), CPF (validar formato)
+      e Senha (armazenada com hash, ex.: BCrypt).
+
+	4. Painel de Transparência (Acesso: Público)
+	• Endpoint de Listagem: o sistema deve expor uma API pública que
+      retorne apenas as campanhas com status Ativa. 
+	• Dados Retornados: A listagem deve exibir Título, Meta Financeira e o
+      Valor Total Arrecadado até o momento (calculado com base nas
+      doações processadas).
+
+	5. Processo de Doação (Acesso: Doador Logado)
+	• O doador logado deve poder enviar uma intenção de doação informando
+      o IdCampanha e o ValorDoacao.
+	• Regra de Negócio: a doação não pode ser feita para campanhas
+      encerradas ou canceladas.
+
+Requisitos Técnicos Obrigatórios (Como deve ser feito)
+
+	A solução não será avaliada apenas pelo funcionamento, mas pela arquitetura
+    aplicada. É obrigatório:
+	
+	Arquitetura de Microsserviços:
+	• A solução deve conter pelo menos dois microsserviços distintos
+     (exemplo: uma API de Campanhas/Usuários e um Worker de
+     Processamento de Doações).
+	 
+	Comunicação Assíncrona e Mensageria:
+	• Ao receber uma nova doação (Item 5), a API NÃO deve atualizar o valor
+      arrecadado da campanha diretamente no banco de dados.
+	• A API deve publicar um evento (ex.: DoacaoRecebidaEvent) em um
+      broker de mensageria (RabbitMQ ou Kafka).
+	• Um segundo serviço (Worker/Consumer) deve consumir essa fila e,
+      então, atualizar o "Valor Total Arrecadado" da respectiva campanha.
+	  
+	Orquestração com Kubernetes:
+	• A aplicação deve rodar em um cluster Kubernetes (pode ser Minikube,
+      Kind, Docker Desktop K8s, etc.). Devem ser entregues os arquivos .yaml
+      (Deployments, Services, ConfigMaps)
+	  
+	Observabilidade (Zabbix e Grafana):
+    • A aplicação deve expor métricas de saúde (/health ou /metrics).
+	• O Grafana deve possuir pelo menos um dashboard configurado exibindo
+      métricas reais da aplicação rodando (ex.: Consumo de CPU/Memória
+      dos pods ou contagem de requisições HTTP).
+	  
+	Pipeline de CI/CD Automatizado:
+    • O repositório deve conter um pipeline (GitHub Actions, Azure DevOps,
+      etc.) que seja acionado a cada push na branch principal.
+    • O pipeline deve compilar o código (.NET build) e gerar a imagem Docker.
+      O deploy automatizado no Kubernetes é opcional, mas a geração da
+      imagem no CI é obrigatória.
+	  
+	Requisitos Técnicos Opcionais (Bônus - Sem impacto na nota)
+    • Implementação de Testes de Unidade (xUnit/NUnit) no domínio da
+      aplicação, rodando obrigatoriamente dentro da esteira de CI.
+    • Utilização de um API Gateway (ex.: Ocelot, KrakenD) roteando as
+      requisições para os microsserviços.
+
+Metas realizadas:
+	1. Arquitetura Base & Modelagem do Domínio
+	   • [X] Definir a estrutura do projeto (.NET):
+				Criar a solução (.sln) com a divisão dos microsserviços:
+				ConexaoSolidaria.Api (Web API principal).
+				ConexaoSolidaria.Worker (Background Service / Consumidor).
+				ConexaoSolidaria.Domain / Infrastructure / SharedEvents (Conforme a biblioteca de classes necessária).
+				  
+	   • [X] Configurar Banco de Dados & Entidades:
+                Modelar as entidades:
+                Usuario: Id, NomeCompleto, Email, CPF, SenhaHash, Role (GestorONG | Doador).
+                Campanha: Id, Titulo, Descricao, DataInicio, DataFim, MetaFinanceira, ValorArrecadado, Status (Ativa | Concluida | Cancelada).
+                Doacao: Id, IdCampanha, IdDoador, Valor, DataDoacao.
+
+	2. Autenticação & Gestão de Usuários
+	   • [X] Implementar Cadastro Público de Doadores:
+	            Endpoint público de registro de novos doadores.
+				Validação de formato de CPF.
+				Validação de e-mail único.
+				Criptografia de senha com BCrypt (ou Argon2 / PBKDF2).
+				  
+	   • [X] Implementar Autenticação JWT:
+	            Endpoint de Login gerando Token JWT com as Claims de e-mail e Role (GestorONG / Doador).
+	            Configuração de Middlewares de Authentication e Authorization na API.
+
+	3. Regras de Negócio e Endpoints da API
+	   • [X] Gestão de Campanhas (Role: GestorONG):
+				Endpoint POST para criar campanha.
+				Endpoint PUT para editar campanha.
+				Validações: DataFim deve ser futura e MetaFinanceira > 0.
+				
+	   • [X] Painel de Transparência (Acesso Público):
+				Endpoint GET público para listar apenas campanhas com status Ativa.
+				Retornar os campos: Titulo, MetaFinanceira e ValorArrecadado.
+				
+	   • [X] Processo de Intenção de Doação (Role: Doador):
+				Endpoint POST para registrar intenção de doação (IdCampanha, ValorDoacao).
+				Validação: Impedir doação para campanhas encerradas ou canceladas.
+
+    4. Mensageria Assíncrona & Worker
+       • [X] Configuração do Broker (RabbitMQ ou Kafka):
+                Subir container do broker via Docker / Docker Compose para ambiente local.
+       • [X] Publicação de Eventos (API):
+                Na criação da doação, criar a mensagem/evento DoacaoRecebidaEvent (IdCampanha, ValorDoacao, Data).
+                Publicar a mensagem na fila sem alterar o saldo da campanha no banco via API.
+       • [X] Consumo e Processamento (Worker Service):
+                Implementar o consumidor (BackgroundService) que escuta a fila.
+                Ao receber o evento, atualizar o campo ValorArrecadado da respectiva campanha no banco de dados.
+
+    5. Containerização e Kubernetes (K8s)
+       • [X] Dockerização:
+                Criar Dockerfile multi-stage para a Api.
+                Criar Dockerfile multi-stage para o Worker.
+       • [X] Manifestos Kubernetes (.yaml):
+                Deployment + Service para a API.
+                Deployment para o Worker.
+                Manifestos para o Banco de Dados e Broker de Mensageria (se rodarem internamente no cluster).
+                ConfigMap e/ou Secret para connection strings, chaves JWT e configurações de ambiente.
+
+	6. Observabilidade & Saúde do Sistema
+	   • [X] Endpoint de Saúde (Health Checks):
+	         Configurar endpoints /health ou /metrics (ex.: Prometheus.Client / HealthChecks do ASP.NET Core).
+	         Verificar status do banco de dados e mensageria no endpoint de health.
+	   • [X] Zabbix & Grafana:
+	         Coletar métricas da aplicação/cluster.
+	         Criar dashboard no Grafana exibindo métricas em tempo real (ex.: uso de CPU/Memória dos pods, total de requisições ou mensagens processadas).
+			 
+	7. Pipeline CI/CD (DevOps)
+	   • [X] Esteira Automática (GitHub Actions / Azure DevOps):
+	         Gatilho configurado para acionamento a cada push na branch principal (main/master).
+	         Etapa 1: Compilação do projeto (dotnet build).
+	         Etapa 2: Build da imagem Docker e envio (push) para o container registry (Docker Hub, GHCR, Azure Container Registry, etc.).
+		 
+
+    Entregáveis Mínimos e Critérios de Aceite na Fase 5
+	1. Repositório de Código Público
+       a. Obrigatório conter um arquivo README.md com instruções claras e em
+       passo a passo de como subir a infraestrutura e a aplicação localmente
+       para correção dos professores.
+	   
+	2. Desenho da Arquitetura
+       a. Entrega de um diagrama claro mostrando os microsserviços, os bancos
+       de dados, o broker de mensageria e as ferramentas de observabilidade.
+       b. Documento em PDF justificando por que os bancos de dados X e Y
+       foram escolhidos.
+	
+	3. Vídeo de Demonstração (Máximo de 15 Minutos): o vídeo não deve focar
+       em ler código linha a linha, mas sim em comprovar a arquitetura e o
+       funcionamento. O roteiro do vídeo deve obrigatoriamente mostrar:
+		
+	   a. Explicação do Diagrama de Arquitetura.
+       b. Demonstração do Pipeline de CI executando e gerando a imagem
+          Docker com sucesso.
+       c. Terminal mostrando os pods rodando no Kubernetes (kubectl get pods)
+          e o dashboard do Grafana exibindo os dados em tempo real.
+	   d. Funcionamento:
+            i. Autenticação via Postman/Swagger e obtenção do token JWT.
+           ii. Criação de uma campanha.
+          iii. Simulação de uma Doação: mostrar o payload sendo enviado; em
+               seguida abrir a interface do RabbitMQ/Kafka mostrando a
+               mensagem passando pela fila e, por fim, consultar a API pública
+               para provar que o valor da campanha foi atualizado pelo Worker
+		
+    Grupo 55
+
+    • Participantes e usernames no Discord.
+	    RM367747 – Alexandre Araújo da Silva  / AlexandreAraujo
+		RM367560 – Josegil Dias Frota Figueira / gildiasfrota
+		RM367985 - Miguel de Oliveira Gonçalves / miguel084
+		
+    • Link do(s) repositório(s).
+		◦ ONG.Donation
+		https://github.com/GilDias987/ONG.Donation
+		◦ ONG.Donation.Worker
+		https://github.com/GilDias987/ONG.Donation.Worker
+
+        ◦ Link do vídeo salvo no Youtube ou lugar de sua preferência. 
+		https://www.youtube.com/watch?v=4kS2ZBx6Ezo
+			
